@@ -7,13 +7,7 @@ import json
 from random import choice
 import time
 
-logger = logging.getLogger(__name__)
-logger.setLevel(level = logging.INFO)
-handler = logging.FileHandler("log.txt")
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+
 __process_list = []
 db = pymysql.connect(host="localhost", user="root", password="", db="db_library", port=3306, charset='utf8')
 cursor = db.cursor()
@@ -48,7 +42,7 @@ def f(name):
         except Exception as e:
             print("error",e)
             continue
-        if num >800:
+        if num >2000:
             print(item,num)
             continue
         for page in range(1,num//7+2):
@@ -74,8 +68,8 @@ def get_page(item):
     num = 0
     for nu in nums:
         num = nu.text
-    data=(item, num)
-    sql2 = 'INSERT INTO tb_ztf_book(zid,num) VALUES (%s,%s)'
+    data=(item, num,time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    sql2 = 'INSERT INTO tb_ztf_book(zid,num,ctime) VALUES (%s,%s,%s)'
     try:
         cursor.execute(sql2, data)
         db.commit()
@@ -143,8 +137,9 @@ def store(id):
 if __name__ == '__main__':
     print("ProgramStart")
 
-    abc=list("ABCDEFGHIJKNOPQRSTUVXZ")
-    for item in  list("FHIT"):
+    abc = list("ABCDEFGHIJKNOPQRSTUVXZ")
+    cde = list("FHIT")
+    for item in  list("FT"):
         process = Process(target=f, args=(item,))
         __process_list.append(process)
     for begin in __process_list:
