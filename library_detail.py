@@ -32,7 +32,7 @@ def get_headers():
     return headers
 
 
-def f(name, q):
+def f(name, ):
     try:
         baseurl = "http://202.120.218.6:8080/browse/cls_browsing_book.php?s_doctype=all&cls="
         sql0 = "SELECT zid from tb_ztf where zid like '"+name+"%' and zid not in(select distinct item from tb_library) and zid not in (select zid from tb_ztf_book where num=0)"
@@ -53,9 +53,8 @@ def f(name, q):
                 db.commit()
                 datas = []
     except Exception as e:
-        process = Process(target=f, args=(name,q))
-        q.put(process)
-        print(name, "------------------------------------error-----------------------------------------")
+        process = Process(target=f, args=(name,)).start()
+        print(name, "------------error，but start again--------------------")
 
 
 
@@ -137,14 +136,13 @@ if __name__ == '__main__':
     a = 0
     abc = list("ABCDEFGHIJKNOPQRSTUVXZ")
     q= Queue()
+    process_list = []
     for item in left_value:
-        process = Process(target=f, args=(item,q,))
-        process.start()
-    while True:
-        a = a+1
-        if q.empty():
-            print("----------第"+str(a)+"次监测------------ 结果：无程序异常")
-        else:
-            q.get().start()
-            print("----------第" + str(a) + "次监测------------ 结果：异常重启")
-        time.sleep(120)
+        process = Process(target=f, args=(item,))
+        process_list.append(process)
+    for i in process_list:
+        i.start()
+    for i in process_list:
+        i.join()
+    print("--------------------ENDING----------------------")
+
