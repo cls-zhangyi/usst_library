@@ -19,7 +19,7 @@ HEADERS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6',
 ]
 
-
+items = ["TN", "TP", "TQ", "TS", "TU", "TV", "F2", "F4", "F7", "F8", "H", "I"]
 def get_headers():
     headers = {
         'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
@@ -42,14 +42,15 @@ def f(name):
         except Exception as e:
             print("error",e)
             continue
-        if num >2000:
-            print(item,num)
+        if num >1000:
             continue
         for page in range(1,num//7+2):
             try:
                 url=baseurl+item[0]+"&page="+str(page)
             except Exception as e:
-                print("error", e)
+                print(name,"----------------error------------------")
+                process = Process(target=f, args=(name,))
+                __process_list.append(process)
                 continue
             datas=datas+get_item(url,item)
         if datas:
@@ -69,6 +70,7 @@ def get_page(item):
     for nu in nums:
         num = nu.text
     data=(item, num,time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    print(data)
     sql2 = 'INSERT INTO tb_ztf_book(zid,num,ctime) VALUES (%s,%s,%s)'
     try:
         cursor.execute(sql2, data)
@@ -106,7 +108,6 @@ def get_item(url,x):
         lend = st.get("lend", 0)
         his=history(id)
         data = [title,kind,desc,sto,lend]+his+[x[0]]
-        print(data)
         datas.append(data)
     return datas
 
@@ -136,14 +137,17 @@ def store(id):
 
 if __name__ == '__main__':
     print("ProgramStart")
-
+    a=0
     abc = list("ABCDEFGHIJKNOPQRSTUVXZ")
-    cde = list("FHIT")
-    for item in  list("FT"):
+    for item in items:
         process = Process(target=f, args=(item,))
         __process_list.append(process)
-    for begin in __process_list:
-        begin.start()
-    for stop in __process_list:
-        stop.join()
-    print("Finish")
+    while True:
+        a=a+1
+        print("----------第"+str(a)+"次监测------------",__process_list )
+        for begin in __process_list:
+            begin.start()
+        for stop in __process_list:
+            stop.join()
+        __process_list = []
+        time.sleep(120)
