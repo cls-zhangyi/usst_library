@@ -18,8 +18,9 @@ HEADERS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6',
 ]
+left_value = ["TN", "TP", "TQ", "TS", "TU", "TV", "F2", "F4", "F7", "F8", "H", "I"]
 
-items = ["TN", "TP", "TQ", "TS", "TU", "TV", "F2", "F4", "F7", "F8", "H", "I"]
+
 def get_headers():
     headers = {
         'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
@@ -31,34 +32,29 @@ def get_headers():
 
 
 def f(name):
-    baseurl="http://202.120.218.6:8080/browse/cls_browsing_book.php?s_doctype=all&cls="
-    sql0 = "SELECT zid from tb_ztf where zid like '"+name+"%' and zid not in(select distinct item from tb_library) and zid not in (select zid from tb_ztf_book where num=0)"
-    cursor.execute(sql0)
-    source = cursor.fetchall()
-    datas=[]
-    for item in source:
-        try:
-            num=get_page(item[0])
-        except Exception as e:
-            print("error",e)
-            continue
-        if num >1000:
-            continue
-        for page in range(1,num//7+2):
-            try:
-                url=baseurl+item[0]+"&page="+str(page)
-            except Exception as e:
-                print(name,"----------------error------------------")
-                process = Process(target=f, args=(name,))
-                __process_list.append(process)
+    try:
+        baseurl = "http://202.120.218.6:8080/browse/cls_browsing_book.php?s_doctype=all&cls="
+        sql0 = "SELECT zid from tb_ztf where zid like '"+name+"%' and zid not in(select distinct item from tb_library) and zid not in (select zid from tb_ztf_book where num=0)"
+        cursor.execute(sql0)
+        source = cursor.fetchall()
+        datas = []
+        for item in source:
+            num = get_page(item[0])
+            if num > 1000:
                 continue
-            datas=datas+get_item(url,item)
-        if datas:
-            data = tuple(datas)
-            sql2 = 'INSERT INTO tb_library(bookname,cdesc,kind,store,lend,l2009,l2010,l2011,l2012,l2013,l2014,l2015,l2016,l2017,l2018,l2019,item) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
-            cursor.executemany(sql2, data)
-            db.commit()
-            datas=[]
+            for page in range(1, num//7+2):
+                url = baseurl+item[0]+"&page="+str(page)
+                datas = datas+get_item(url, item)
+            if datas:
+                data = tuple(datas)
+                sql2 = 'INSERT INTO tb_library(bookname,cdesc,kind,store,lend,l2009,l2010,l2011,l2012,l2013,l2014,l2015,l2016,l2017,l2018,l2019,item) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
+                cursor.executemany(sql2, data)
+                db.commit()
+                datas = []
+    except Exception as e:
+        print(name, "------------------------------------error-----------------------------------------")
+        process = Process(target=f, args=(name,))
+        __process_list.append(process)
 
 
 def get_page(item):
@@ -69,7 +65,7 @@ def get_page(item):
     num = 0
     for nu in nums:
         num = nu.text
-    data=(item, num,time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    data = (item, num, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     print(data)
     sql2 = 'INSERT INTO tb_ztf_book(zid,num,ctime) VALUES (%s,%s,%s)'
     try:
@@ -80,74 +76,73 @@ def get_page(item):
     return int(num)
 
 
-def get_item(url,x):
-    datas=[]
+def get_item(url, x):
+    datas = []
     html = requests.get(url=url, timeout=20, headers=get_headers())
     res = etree.HTML(html.text)
     itemss = res.xpath('//div[@class="list_books"]//a')
     kindss = res.xpath('//div[@class="list_books"]//h3/text()')
     descss = res.xpath('//div[@class="list_books"]//p/text()')
-    items=[]
-    ids=[]
-    kinds=[]
-    descs=[]
-    for item in itemss:
-        items.append(item.text)
-        ids.append(item.get('href', 'no=').split("no=")[-1])
+    items = []
+    ids = []
+    kinds = []
+    descs = []
+    for i in itemss:
+        items.append(i.text)
+        ids.append(i.get('href', 'no=').split("no=")[-1])
     for kind in kindss:
         kinds.append(kind.strip())
     for desc in descss:
         descs.append(desc.strip())
-    for i in range(0,len(ids)):
-        id=ids[i]
-        title=items[i]
-        kind=kinds[i]
-        desc=descs[2*i+1]
-        st=store(id)
-        sto=st.get("store",0)
+    for i in range(0, len(ids)):
+        job_id = ids[i]
+        title = items[i]
+        kind = kinds[i]
+        desc = descs[2*i+1]
+        st = store(job_id)
+        sto = st.get("store", 0)
         lend = st.get("lend", 0)
-        his=history(id)
-        data = [title,kind,desc,sto,lend]+his+[x[0]]
+        his = history(job_id)
+        data = [title, kind, desc, sto, lend]+his+[x[0]]
         datas.append(data)
     return datas
 
 
-def history(id):
-    baseurl="http://202.120.218.6:8080/opac/ajax_lend_trend.php?id="+str(id)
+def history(job_id):
+    baseurl = "http://202.120.218.6:8080/opac/ajax_lend_trend.php?id=" + str(job_id)
     html = requests.get(url=baseurl, timeout=20, headers=get_headers())
     js = json.loads(html.text)
-    history=js.get("elements")[0].get("values")
-    return history
+    historys = js.get("elements")[0].get("values")
+    return historys
 
 
-def store(id):
-    baseurl="http://202.120.218.6:8080/opac/ajax_lend_avl.php?marc_no="+str(id)
+def store(job_id):
+    baseurl = "http://202.120.218.6:8080/opac/ajax_lend_avl.php?marc_no="+str(job_id)
     html = requests.get(url=baseurl, timeout=20, headers=get_headers())
     res = etree.HTML(html.text)
-    stores=res.xpath("//b")
-    store={"store":0,"lend":0}
-    for item in stores:
-        store["store"]=item.text.split("/")[0]
+    stores = res.xpath("//b")
+    store_data = {"store": 0, "lend": 0}
+    for i in stores:
+        store_data["store"] = i.text.split("/")[0]
         try:
-            store["lend"] = item.text.split("/")[-1]
-        except:
+            store_data["lend"] = i.text.split("/")[-1]
+        except Exception as e:
             pass
-    return store
+    return store_data
 
 
 if __name__ == '__main__':
-    print("ProgramStart")
-    a=0
+    a = 0
     abc = list("ABCDEFGHIJKNOPQRSTUVXZ")
-    for item in items:
+    for item in left_value:
         process = Process(target=f, args=(item,))
         __process_list.append(process)
     while True:
-        a=a+1
-        print("----------第"+str(a)+"次监测------------",__process_list )
+        a = a+1
+        print("----------第"+str(a)+"次监测------------", __process_list)
         for begin in __process_list:
             begin.start()
-        for stop in __process_list:
-            stop.join()
+        # for stop in __process_list:
+        #     stop.join()
         __process_list = []
         time.sleep(120)
