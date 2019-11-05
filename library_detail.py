@@ -1,5 +1,6 @@
 import logging
-from multiprocessing import Process
+from multiprocessing import Process, Queue
+import multiprocessing
 import pymysql
 import requests
 from lxml import etree
@@ -8,7 +9,7 @@ from random import choice
 import time
 
 
-__process_list = []
+
 db = pymysql.connect(host="localhost", user="root", password="", db="db_library", port=3306, charset='utf8')
 cursor = db.cursor()
 HEADERS = [
@@ -31,7 +32,7 @@ def get_headers():
     return headers
 
 
-def f(name):
+def f(name, q):
     try:
         baseurl = "http://202.120.218.6:8080/browse/cls_browsing_book.php?s_doctype=all&cls="
         sql0 = "SELECT zid from tb_ztf where zid like '"+name+"%' and zid not in(select distinct item from tb_library) and zid not in (select zid from tb_ztf_book where num=0)"
@@ -52,9 +53,10 @@ def f(name):
                 db.commit()
                 datas = []
     except Exception as e:
+        process = Process(target=f, args=(name,q))
+        q.put(process)
         print(name, "------------------------------------error-----------------------------------------")
-        process = Process(target=f, args=(name,))
-        __process_list.append(process)
+
 
 
 def get_page(item):
@@ -134,15 +136,15 @@ def store(job_id):
 if __name__ == '__main__':
     a = 0
     abc = list("ABCDEFGHIJKNOPQRSTUVXZ")
+    q= Queue()
     for item in left_value:
-        process = Process(target=f, args=(item,))
-        __process_list.append(process)
+        process = Process(target=f, args=(item,q,))
+        process.start()
     while True:
         a = a+1
-        print("----------第"+str(a)+"次监测------------", __process_list)
-        for begin in __process_list:
-            begin.start()
-        # for stop in __process_list:
-        #     stop.join()
-        __process_list = []
+        if q.empty():
+            print("----------第"+str(a)+"次监测------------ 结果：无程序异常")
+        else:
+            q.get().start()
+            print("----------第" + str(a) + "次监测------------ 结果：异常重启")
         time.sleep(120)
